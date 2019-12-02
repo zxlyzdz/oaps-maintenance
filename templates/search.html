@@ -1,0 +1,156 @@
+{% extends "template.html" %}
+
+{% block content %}
+    {% if message %}
+        {{ message }}
+    {% endif %}
+	<script>
+		(function($){
+			$.fn.textSearch = function(str,options){
+				var defaults = {
+					divFlag: true,
+					divStr: " ",
+					markClass: "",
+					markColor: "red",
+					nullReport: true,
+					callback: function(){
+						return false;	
+					}
+				};
+				var sets = $.extend({}, defaults, options || {}), clStr;
+				if(sets.markClass){
+					clStr = "class='"+sets.markClass+"'";	
+				}else{
+					clStr = "style='color:"+sets.markColor+";'";
+				}
+				
+				$("span[rel='mark']").each(function() {
+					var text = document.createTextNode($(this).text());	
+					$(this).replaceWith($(text));
+				});
+				
+				
+				$.regTrim = function(s){
+					var imp = /[\^\.\\\|\(\)\*\+\-\$\[\]\?]/g;
+					var imp_c = {};
+					imp_c["^"] = "\\^";
+					imp_c["."] = "\\.";
+					imp_c["\\"] = "\\\\";
+					imp_c["|"] = "\\|";
+					imp_c["("] = "\\(";
+					imp_c[")"] = "\\)";
+					imp_c["*"] = "\\*";
+					imp_c["+"] = "\\+";
+					imp_c["-"] = "\\-";
+					imp_c["$"] = "\$";
+					imp_c["["] = "\\[";
+					imp_c["]"] = "\\]";
+					imp_c["?"] = "\\?";
+					s = s.replace(imp,function(o){
+						return imp_c[o];					   
+					});	
+					return s;
+				};
+				$(this).each(function(){
+					var t = $(this);
+					str = $.trim(str);
+					if(str === ""){
+						alert("the keyword is");	
+						return false;
+					}else{
+						var arr = [];
+						if(sets.divFlag){
+							arr = str.split(sets.divStr);	
+						}else{
+							arr.push(str);	
+						}
+					}
+					var v_html = t.html();
+					v_html = v_html.replace(/<!--(?:.*)\-->/g,"");
+					
+					var tags = /[^<>]+|<(\/?)([A-Za-z]+)([^<>]*)>/g;
+					var a = v_html.match(tags), test = 0;
+					$.each(a, function(i, c){
+						if(!/<(?:.|\s)*?>/.test(c)){
+							$.each(arr,function(index, con){
+								if(con === ""){return;}
+								var reg = new RegExp($.regTrim(con), "g");
+								if(reg.test(c)){
+									c = c.replace(reg,"鈾�"+con+"鈾€");
+									test = 1;
+								}
+							});
+							c = c.replace(/鈾�/g,"<mark "+clStr+">").replace(/鈾€/g,"</mark>");
+							a[i] = c;
+						}
+					});
+					var new_html = a.join("");
+					
+					$(this).html(new_html);
+					
+					if(test === 0 && sets.nullReport){
+						alert("no result");	
+						return false;
+					}
+					
+					sets.callback();
+				});
+			};
+		})(jQuery);
+
+		$(document).ready(function() {
+			var content = '{{ content }}'
+			$('body').textSearch(content);
+		 })
+
+</script>
+    {% if articles %}
+        <table class="table table-hover table-striped">
+    <thead>
+      <tr>
+          <th>subject</th>
+        <th>title</th>
+        <th>author</th>
+        <th>time</th>
+          <th>popularity</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for article in articles %}
+            <td><a href="/subject/{{ article.subject_id }}">{{ article.subject.name }}</a></td>
+            <td><a href="/article/{{ article.id }}">{{ article.title }}</a></td>
+            <td>{{ Tool.email_display_filter(article.author.mail) }}</td>
+            <td>{{ article.time.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td>{{ article.metric }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+
+    {% endif %}
+
+
+    {% if comments %}
+        <table class="table table-hover table-striped">
+    <thead>
+      <tr>
+          <th>article_title</th>
+        <th>comment</th>
+        <th>time</th>
+        <th>author</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for comment in comments %}
+        <tr>
+            <td><a href="/article/{{ comment.article_id }}">{{ comment.article.title }}</a></td>
+            <td>{{ Tool.sensitive_words_filter(comment.body) }}</td>
+            <td>{{ comment.time.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td><a href="/author/{{ comment.author_id }}">{{ Tool.email_display_filter(comment.author.mail) }}</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+    {% endif %}
+
+{% endblock %}
